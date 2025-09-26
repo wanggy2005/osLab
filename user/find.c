@@ -9,12 +9,9 @@ void find(char *path, char *target);
 char* fmtname(char *path) {
     static char buf[DIRSIZ+1];
     char *p;
-    
     // 查找路径中的最后一个斜杠
-    for(p = path + strlen(path); p >= path && *p != '/'; p--)
-        ;
+    for(p = path + strlen(path); p >= path && *p != '/'; p--);
     p++;
-    
     // 返回文件名部分
     if(strlen(p) >= DIRSIZ)
         return p;
