@@ -1,4 +1,4 @@
-#include "types.h"
+ #include "types.h"
 #include "param.h"
 #include "memlayout.h"
 #include "riscv.h"
@@ -338,6 +338,44 @@ void exit(int status) {
 
   acquire(&p->lock);
 
+/**/
+  // Print parent process information
+  if (original_parent) {
+    const char* parent_state;
+    switch(original_parent->state) {
+      case UNUSED: parent_state = "unused"; break;
+      case SLEEPING: parent_state = "sleep"; break;
+      case RUNNABLE: parent_state = "runble"; break;
+      case RUNNING: parent_state = "run"; break;
+      case ZOMBIE: parent_state = "zombie"; break;
+      default: parent_state = "unknown"; break;
+    }
+    exit_info("proc %d exit, parent pid %d, name %s, state %s\n", 
+              p->pid, original_parent->pid, original_parent->name, parent_state);
+  }
+
+  // Print child processes information
+  int child_num = 0;
+  struct proc *pp;
+  for (pp = proc; pp < &proc[NPROC]; pp++) {
+    if (pp->parent == p) {
+      const char* child_state;
+      switch(pp->state) {
+        case UNUSED: child_state = "unused"; break;
+        case SLEEPING: child_state = "sleep"; break;
+        case RUNNABLE: child_state = "runble"; break;
+        case RUNNING: child_state = "run"; break;
+        case ZOMBIE: child_state = "zombie"; break;
+        default: child_state = "unknown"; break;
+      }
+      exit_info("proc %d exit, child %d, pid %d, name %s, state %s\n", 
+                p->pid, child_num, pp->pid, pp->name, child_state);
+      child_num++;
+    }
+  }
+/**/
+
+
   // Give any children to init.
   reparent(p);
 
@@ -356,7 +394,7 @@ void exit(int status) {
 
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
-int wait(uint64 addr) {
+int wait(uint64 addr, int options) {
   struct proc *np;
   int havekids, pid;
   struct proc *p = myproc();
@@ -398,6 +436,13 @@ int wait(uint64 addr) {
     if (!havekids || p->killed) {
       release(&p->lock);
       return -1;
+    }
+
+    // Check for non-blocking option (WNOHANG)
+    // WNOHANG is typically defined as 1 in Unix systems
+    if (options) {  // WNOHANG
+      release(&p->lock);
+      return -1;  // 非阻塞模式：没有子进程退出时返回-1
     }
 
     // Wait for a child to exit.
